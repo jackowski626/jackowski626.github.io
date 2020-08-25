@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+ <html>
+<body onload="generate()">
+Refresh to generate new BigMoney alt name
+<h2 id="text"></h2>
+</body>
+
+
+<script>
+var first =['sizeable','substantial','considerable','great','huge','immense','enormous','extensive','colossal','massive','mammoth','vast','prodigious','tremendous','gigantic','giant','monumental','mighty','stupendous','gargantuan','elephantine','titanic','epic','mountainous','megalithic','monstrous','Brobdingnagian','towering','tall','high','lofty','outsize','oversized','overgrown','cumbersome','unwieldy','inordinate','unlimited','goodly','capacious','voluminous','commodious','spacious','good-sized','fair-sized','king-sized','man-size','jumbo','whopping','thumping','bumper','mega','humongous','monster','astronomical','cosmic','almighty','dirty','great','socking','great','tidy','whacking','whacking','great','ginormous','massy','well','built','sturdily','built','heavily','built','sturdy','brawny','burly','broad-shouldered','muscular','muscly','well','muscled','robust','rugged','lusty','Herculean','bulky','strapping','thickset','stocky','solid','hefty','meaty','fat','stout','portly','plump','heavy','overweight','oversize','fleshy','paunchy','corpulent','obese','hunky','hulking','beefy','husky','buff','stalwart','thewy'];
+
+var second = ['cash','hard','cash','ready','money','means','wherewithal','funds','capital','finances','lucre','banknotes','notes','money','coins','change','coin','coinage','silver','copper','currency','sterling','bills','roll','dough','bread','loot','readies','shekels','moolah','wad','boodle','dibs','gelt','ducats','rhino','gravy','scratch','stuff','folding','money','dosh','brass','lolly','spondulicks','wonga','ackers','dinero','greenbacks','simoleons','bucks','jack','mazuma','Oscar','splosh','green','kale','rocks','shinplasters','specie','pelf'];
+
+
+function generate() {
+//alert('t') ;
+	let text = document.getElementById('text');
+	let rand_1 = Math.floor(Math.random() * first.length);
+	let rand_2 = Math.floor(Math.random() * second.length); 
+//alert(1);
+	text.innerHTML = first[rand_1].slice(0,1).toUpperCase()+first[rand_1].slice(1,first[rand_1].length)+ second[rand_2].slice(0,1).toUpperCase()+second[rand_2].slice(1,second[rand_2].length) ;
+} 
+</script>
+</html>

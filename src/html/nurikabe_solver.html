@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Nurikabe Solver</title>
+	<link rel="icon" href="../../ressources/images/favicon.png">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">	
+	<link rel="stylesheet" type="text/css" href="../../ressources/css/mainStylesheet.css"/>
+	<link rel="stylesheet" href="../../ressources/css/nurikabeSolver.css">
+	<link rel="stylesheet" href="../../ressources/css/font-awesome.min.css">
+</head>
+	<body>
+		<div id="container">
+		<br>
+  		
+  		<!--<hr>-->
+		<br>
+		<h1>Nurikabe Solver</h1>
+		<h2>A friend and I have written a Nurikabe Solver and a GUI for our high school graduation project (Travail de Maturité, or TM). The algorithm has been originally written in Python, and a JavaScript version has been implemented below. All grids have been taken from <a href="https://www.puzzle-nurikabe.com/" target="_blank">puzzle-nurikabe.com</a>.</h2>
+		<h3>Choose a Nurikabe grid to solve:</h3>
+		<div style="display: flex; align-items: flex-start;">
+			<select style="" class="gridSelect" id="0" onchange="grid = change(0); freshlySet = true;">
+			    <option>5×5 grids</option>
+			    <option>1</option>
+			    <option>2</option>
+			    <option>3</option>
+			    <option>4</option>
+			    <option>5</option>
+			    <option>6</option>
+			    <option>7</option>
+			    <option>8</option>
+			    <option>9</option>
+			    <option>10</option>
+			</select>
+		    <select class="gridSelect" id="1" onchange="grid=change(1);">
+		    	<option>7×7 grids</option>
+		        <option>1</option>
+		        <option>2</option>
+		        <option>3</option>
+		        <option>4</option>
+		        <option>5</option>
+		        <option>6</option>
+		        <option>7</option>
+		        <option>8</option>
+		        <option>9</option>
+		        <option>10</option>
+		    </select>
+		    <select class="gridSelect" id="2" onchange="grid=change(2);">
+		        <option>10×10 grids</option>
+		        <option>1</option>
+		        <option>2</option>
+		        <option>3</option>
+		    </select>
+		    <div id="rules" class="tooltip">Hover for Nurikabe rules
+			  	<span id="rulesTooltip">
+			  		<ul>
+					  	<li>Each number on the grid represents an "island" size</li>
+					  	<li>The number of tiles of an island must be equal to its size</li>
+					  	<li>The islands can only touch diagonally</li>
+					  	<li>The space between islands is called "wall"</li>
+					  	<li>The wall must be continuous</li>
+					  	<li>The wall can not contain 2×2 blocks</li>
+					</ul>
+				</span>
+			</div>
+		</div>
+		
+		<br>
+		<div id="switchWrapper">Steps: 
+			<label class="switch">
+		  		<input id="stepSwitch" onchange="changeStepMode();" type="checkbox">
+		  		<span class="slider"></span>
+			</label>
+		</div>
+		<div>
+			<canvas class="center" id="canvas" width="300" height="300"></canvas>
+		</div>
+		<br>
+		<div id="wrap">
+			<button onclick="solveWrapper(grid);">Solve</button>
+			<button onclick="reset(cachedGrid);" id="reset">Reset</button>
+			<button class="disabledButton" onclick="" id="resetDisabled">Reset</button>
+			<button onclick="pause();" id="pause" style="display: none;">Pause</button>
+			<button onclick="" id="pauseDisabled">Pause</button>
+			<button onclick="step();" id="step" style="display: none;">Next Step</button>
+			<button onclick="" id="stepDisabled">Next Step</button>
+			<br><br>
+			<div id="speed" style="display: none;">Milliseconds between each step:  <input id="interval" style="" type="range" min="1" max="2500" value="250">250</div>
+		</div>
+		<br>
+		<div>
+			<h2 id="waiting"></h2>
+		</div>
+	</div>
+		<script>
+			//Algorithm:
+			document.getElementById("speed").innerHTML = 'Milliseconds between each step:  <input id="interval" style="" type="range" min="1" max="2500" value="250"/>250';
+			class Island {
+				constructor(x, y, size) {
+					this.x = x;
+					this.y = y;
+					this.size = size;
+					this.complete = null;
+				}
+			}
+			class State {
+				constructor(table){
+					this.table = table;
+					this.impossibleMoves = [];
+					this.lastMove = null;
+					this.lastIsland = null;
+				}
+			}
+			function inArray(haystack, needle){
+				for(item in haystack){
+					if (haystack[item][0] == needle[0] && haystack[item][1] == needle[1]){
+						return true;
+					}
+				}
+				return false;
+			}
+			function printTableOld(table) {
+			    var tempStr = "";
+			    for (var i = 0; i < table.length; i++) {
+			    	for (var j = 0; j < table[0].length; j++) {
+			    		if (table[i][j] == 0) {
+			    			tempStr += "U"+" ";
+			    		}
+			    		else if (table[i][j] == -1){
+			    			tempStr += "B"+" ";
+			    		}
+			    		else if (table[i][j] == -2){
+			    			tempStr += "W"+" ";
+			    		}
+			    		else {
+			    			tempStr += table[i][j]+" ";
+			    		}
+			    	}
+			    	tempStr += "\n";
+			    }
+			    console.log(tempStr);
+			}
+			function areTouching(x1, y1, x2, y2) {
+				var touching = false;
+				if ((Math.abs(x1 - x2) == 1 && y2 == y1) || (x2 == x1 && Math.abs(y1 - y2) == 1)){
+		        	touching = true;
+				}
+		    	return touching
+			}
+			function elimAdj(table) {
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if ((i < (x_len - 2)) && table[i][j] > 0 && table[i + 2][j] > 0){
+		    				table[i+1][j] = -1;
+		    			}
+		    			if ((j < (y_len - 2)) && table[i][j] > 0 && table[i][j + 2] > 0){
+		    				table[i][j + 1] = -1;
+		    			}
+		    		}
+		    	}
+		    	return table;
+			}
+			function elimAroundOnes(table) {
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if (table[i][j] == 1) {
+		    				if (i > 0) {
+		    					table[i-1][j] = -1;
+		    				}
+		    				if (j > 0) {
+		    					table[i][j-1] = -1;
+		    				}
+		    				if (i < x_len-1) {
+		    					table[i+1][j] = -1;
+		    				}
+		    				if (j < y_len-1) {
+		    					table[i][j+1] = -1;
+		    				}
+		    			}
+		    		}
+		    	}
+		    	return table;
+			}
+			function diagonal(table) {
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if (i < (x_len-1) && j < (y_len-1)) {
+		    				if (table[i][j] > 0 && table[i+1][j+1] > 0) {
+		    					table[i+1][j] = -1;
+		    					table[i][j+1] = -1;
+		    				}
+		    				if (table[i+1][j] > 0 && table[i][j+1] > 0){
+		    				table[i][j] = -1;
+		    				table[i+1][j+1] = -1;
+		    			}
+		    			}
+		    		}
+		    	}
+		    	return table;
+			}
+			function wallBlockCheck(table) {
+				var x_len = table.length-1;
+		    	var y_len = table[0].length-1;
+		    	foundBlock = false;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if (table[i][j] == -1 && table[i+1][j] == -1 && table[i][j+1] == -1 && table[i+1][j+1] == -1) {
+		    				foundBlock = true;
+		    				return [i,j];
+		    			}
+		    		}
+		    	}
+		    	if (!foundBlock){
+		    		return null;
+		    	}
+			}
+			function checkForUndefined(table) {
+				undefinedInTable = false;
+				for (line in table) {
+					if (line.includes(0)) {
+						undefinedInTable = true;
+					}
+				}
+				return undefinedInTable;
+			}
+			function islandCheckNotTooBig(x, y, table, counter, tempTable=null, revertTable=null, returning=false) {
+				if (tempTable == null) {
+					tempTable = [];
+					revertTable = [];		
+				}
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	if (!inArray(tempTable,[x, y])) {
+		    		counter--;
+		    		if (counter == 0) {
+		    			return true;
+		    		}
+		    		tempTable.push([x,y]);
+		    	}
+		    	if (!returning) {
+		    		revertTable.push([x,y]);
+		    	}
+		    	if (x > 0 && table[x-1][y] == -2 && !inArray(tempTable, [x-1,y])){
+		    		return islandCheckNotTooBig(x-1, y, table, counter, tempTable, revertTable, returning=false);
+		    	}
+		    	else if (y > 0 && table[x][y-1] == -2 && !inArray(tempTable,[x,y-1])) {
+		    		return islandCheckNotTooBig(x, y-1, table, counter, tempTable, revertTable, returning=false);
+		    	}
+		    	else if ((x < x_len -1) && table[x+1][y] == -2 && !inArray(tempTable
+		    		,[x+1,y])){
+		    		return islandCheckNotTooBig(x + 1, y, table, counter, tempTable, revertTable, returning=false);
+		    	}
+		    	else if ((y < y_len - 1) && table[x][y+1] == -2 && !inArray(tempTable,[x,y+1])){
+		        	return islandCheckNotTooBig(x, y + 1, table, counter, tempTable, revertTable, returning=false);
+		    	}
+		    	else if(revertTable.length > 1){
+		    		revertTable.pop();
+		    		return islandCheckNotTooBig(revertTable[revertTable.length - 1][0], revertTable[revertTable.length - 1][1], table, counter, tempTable, revertTable, returning=true);
+		    	}
+		    	else {
+		    		return false;
+		    	}
+			}
+			function islandCheck(x, y, table, counter, returning=false){
+				var flag = true;
+				counterCopy = counter;
+				if (!islandCheckNotTooBig(x,y,table,counterCopy)) {
+					flag = false;
+				}
+				counterCopy = counter+1;
+				if (islandCheckNotTooBig(x,y,table,counterCopy)) {
+					flag = false;
+				}
+				return flag;
+			}
+			function allIslCheck(table) {
+				flag = true;
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if (table[i][j] > 0) {
+		    				counter = table[i][j];
+		    				if (flag) {
+		    					flag = islandCheck(i, j, table, counter);
+		    				}
+		    			}
+		    		}
+		    	}
+		    	return flag;
+			}
+			function neighbour (table, x, y, direction) {
+				if (direction == "up") {
+					if (x == 0) {
+						return -3;
+					} else {
+						return table[x - 1][y];
+					}
+				}
+				if (direction == "down") {
+					if (x == table.length-1) {
+						return -3;
+					} else {
+						return table[x + 1][y];
+					}
+				}
+				if (direction == "left") {
+					if (y == 0) {
+						return -3;
+					} else {
+						return table[x][y-1];
+					}
+				}
+				if (direction == "right") {
+					if (y == table[0].length-1) {
+						return -3;
+					} else {
+						return table[x][y+1];
+					}
+				}
+			}
+			function setNeighbour(x, y, table, direction, value) {
+				if (neighbour(table, x, y, direction) != -3) {
+					if (direction == "up") {
+						table[x-1][y] = value;
+					}
+					if (direction == "down") {
+						table[x+1][y] = value;
+					}
+					if (direction == "left") {
+						table[x][y-1] = value;
+					}
+					if (direction == "right") {
+						table[x][y+1] = value;
+					}
+				}
+			}
+			function surround(table) {
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if ((table[i][j] == 0 && (neighbour(table, i, j, "up") == -3 || neighbour(table, i, j, "up") == -1)) && ((table[i][j] == 0 && (neighbour(table, i, j, "down") == -3 || neighbour(table, i, j, "down") == -1)) && (table[i][j] == 0 && (neighbour(table, i, j, "left") == -3 || neighbour(table, i, j, "left") == -1)) && (table[i][j] == 0 && (neighbour(table, i, j, "right") == -3 || neighbour(table, i, j, "right") == -1)))) {
+		    				table[i][j] = -1;
+		    			}
+		    		}
+		    	}
+		    	return table;
+			}
+			function wallAroundIslands(table) {
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if (table[i][j] > 0) {
+		    				if (islandCheck(i,j,table,table[i][j])) {
+		    					var tiles = returnTiles(i, j, table);
+		    					for (tile in tiles){
+		    						var directions = ["up","right","down","left"];
+		    						for (direction in directions){
+		    							if (neighbour(table, tiles[tile][0], tiles[tile][1], directions[direction]) != -2 && neighbour(table, tiles[tile][0], tiles[tile][1], directions[direction]) != -3 && neighbour(table, tiles[tile][0], tiles[tile][1], directions[direction]) < 1) {
+		    							setNeighbour(tiles[tile][0], tiles[tile][1], table, directions[direction], -1);
+		    							}
+		    						}
+		    					}
+		    				}
+		    			}
+		    		}
+		    	}
+		    	return table;
+			}
+			function returnTiles(x, y, table, partList=null, mode=-2, undeffined=false) {
+				if (partList == null) {
+					partList = [];
+				}
+				if ((table[x][y] == mode || (table[x][y] > 0 && mode ==-2) || (table[x][y] == 0 && undeffined)) && !inArray(partList,[x,y])) {
+					partList.push([x,y]);
+					if (x > 0) {
+						returnTiles(x-1, y, table, partList, mode, undeffined);
+					}
+					if (x < table.length-1) {
+						returnTiles(x+1, y, table, partList, mode, undeffined);
+					}
+					if (y > 0) {
+						returnTiles(x, y-1, table, partList, mode, undeffined);
+					}
+					if (y < table[0].length-1) {
+						returnTiles(x, y+1, table, partList, mode, undeffined);
+					}
+				}
+				return partList;
+			}
+			function count(haystack, needle) {
+				var count = 0;
+				for (x in haystack) {
+					if (haystack[x] == needle) {
+						count++;
+					}
+				}
+				return count;
+			}
+			function addOneTile(x, y, table, counter=null, succeeded=null, returning=false) {
+				if (x == 4 && y == 2){
+					console.log("debug");
+				}
+				if (!returning || succeeded) {
+					if (counter == null) {
+						counter = table[x][y]-1;
+						if (counter == 0) {
+							return table;
+						}
+					} else {
+						counter--;
+					}
+					if (counter <= 0) {
+						return table;
+					}
+					var parts = returnTiles(x, y, table);
+					var neighbours = [];
+					var eligibleParts = [];
+					var totalOnlyZeros = [];
+					var islandEligibleForAddingOneTile = false;
+					var counter2 = 0;
+					for (var i = 0; i < parts.length; i++) {
+						totalOnlyZeros.push(neighbour(table, parts[i][0], parts[i][1], "up"));
+			            totalOnlyZeros.push(neighbour(table, parts[i][0], parts[i][1], "right"));
+			            totalOnlyZeros.push(neighbour(table, parts[i][0], parts[i][1], "down"));
+			            totalOnlyZeros.push(neighbour(table, parts[i][0], parts[i][1], "left"));
+			            	counter2 += count(totalOnlyZeros, 0);
+			            if (counter <= 0) {
+			            	return table;
+			            }
+					}
+					if (counter2 == 1) {
+						islandEligibleForAddingOneTile = true;
+					}
+					if (islandEligibleForAddingOneTile) {
+						for (var i = 0; i < parts.length; i++) {
+							neighbours.push(neighbour(table, parts[i][0], parts[i][1], "up"));
+			            	neighbours.push(neighbour(table, parts[i][0], parts[i][1], "right"));
+			            	neighbours.push(neighbour(table, parts[i][0], parts[i][1], "down"));
+			            	neighbours.push(neighbour(table, parts[i][0], parts[i][1], "left"));
+			            	if (count(neighbours,0) == 1) {
+			            		eligibleParts.push([parts[i][0], parts[i][1]]);
+			            	}
+			            neighbours = [];
+						}
+					}
+					if (eligibleParts.length == 1 && returnTiles(x,y,table).length < table[x][y]){
+						if (neighbour(table, eligibleParts[0][0], eligibleParts[0][1], "up") == 0) {
+							setNeighbour(eligibleParts[0][0], eligibleParts[0][1], table, "up", -2);
+			                return addOneTile(x, y, table, counter, true, true);
+						}
+						if (neighbour(table, eligibleParts[0][0], eligibleParts[0][1], "right") == 0) {
+							setNeighbour(eligibleParts[0][0], eligibleParts[0][1], table, "right", -2);
+			                return addOneTile(x, y, table, counter, true, true);
+						}
+						if (neighbour(table, eligibleParts[0][0], eligibleParts[0][1], "down") == 0) {
+							setNeighbour(eligibleParts[0][0], eligibleParts[0][1], table, "down", -2);
+			                return addOneTile(x, y, table, counter, true, true);
+						}
+						if (neighbour(table, eligibleParts[0][0], eligibleParts[0][1], "left") == 0) {
+							setNeighbour(eligibleParts[0][0], eligibleParts[0][1], table, "left", -2);
+			                return addOneTile(x, y, table, counter, true, true);
+						}
+					} else {
+						return addOneTile(x, y, table, counter, false, true)
+					}
+				} else {
+					return table;
+				}
+				return table;
+			}
+			function addOneTileEverywhere(table) {
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if (table[i][j] > 0) {
+		    				addOneTile(i, j, table);
+		    			}
+		    		}
+		    	}
+		    	return table;
+			}
+			function checkWallIntegrity3(table, mode="normal") {
+				var islandSum = 0;
+				var islandCount = 0;
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if (table[i][j] > 0) {
+		    				islandSum += table[i][j];
+		    				islandCount += returnTiles(i, j, table).length;
+		    			}
+		    		}
+		    	}
+		    	tempCoords = null;
+		    	coords = null;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if (table[i][j] == -1 || (table[i][j] == 0 && mode == "undefined")) {
+		    				coords = [i,j];
+		    				break;
+		    			}
+		    		}
+		    	}
+		    	if (coords != null) {
+		    		var partList = returnTiles(coords[0], coords[1], table, null, -1, true);
+		    		if (mode == "normal" && (partList.length+islandSum) == x_len*y_len) {
+		    			return true;
+		    		} else if (mode == "undefined" && (partList.length+islandCount) == x_len*y_len) {
+		    			return true;
+		    		} else {
+		    			return false;
+		    		}
+		    	} else {
+		    		console.log("No wall present");
+		    		return false;
+		    	}
+			}
+			function compareArray(array1, array2) { //assuming their m and n are the same and they're 2d, basically two nurikabe grids
+				var flag = true;
+				for (a in array1){
+					for (b in array1[0]){
+						if (!(array1[a][b] == array2[a][b])) {
+							flag = false;
+						}
+					}
+				}
+				if (array1.length != array2.length) {
+					return false;
+				} else {
+					return flag;
+				}
+			}
+			function deepcopy(object) {
+					if (Array.isArray(object)) {
+						var copy = [];
+					} else if (typeof object === "object") {
+						var copy = {};
+					} else {
+						var copy = [];
+					}
+					for (index in object) {
+						if (Array.isArray(object[index]) || typeof object[index] === "object") {
+							copy[index] = deepcopy(object[index]);
+						} else {
+							copy[index] = object[index];
+						}
+					}
+					return copy;
+				}
+			function logicalMoves(table) {
+				var tempTable = [];
+				while (!compareArray(tempTable, table)){
+					tempTable = deepcopy(table);
+					wallAroundIslands(table);
+					addOneTileEverywhere(table);
+					surround(table);
+				}
+				return table;
+			}
+			function wall(table) {
+				var x_len = table.length;
+		    	var y_len = table[0].length;
+		    	for (var i = 0; i < x_len; i++) {
+		    		for (var j = 0; j < y_len; j++) {
+		    			if (table[i][j] == 0) {
+		    				table[i][j] = -1;
+		    			}
+		    		}
+		    	}
+		    	return table;
+			}
+			function returnPotentialTiles(table, chosenIsland, currentState) {
+				var directions = ["up","right","down","left"];
+				var potentialNewTiles = [];
+				for(itemm in chosenIsland.tiles){
+					for(z in directions){
+						if (neighbour(table, chosenIsland.tiles[itemm][0], chosenIsland.tiles[itemm][1], directions[z]) == 0) {
+							setNeighbour(chosenIsland.tiles[itemm][0], chosenIsland.tiles[itemm][1], table, directions[z], -2);
+							tempTiles = returnTiles(chosenIsland.x, chosenIsland.y, table);
+							counter = 0;
+							for(tile in tempTiles){
+								if (table[tempTiles[tile][0]][tempTiles[tile][1]] > 0) {
+									counter ++;
+								}
+							}
+							if (counter > 1) {//console.log("pass");
+							} else if (!checkWallIntegrity3(table, "undefined")){//console.log("pass");
+							} else if ((inArray(currentState.impossibleMoves, [chosenIsland.tiles[itemm][0]-1, chosenIsland.tiles[itemm][1]]) && directions[z]=="up") || (inArray(currentState.impossibleMoves, [chosenIsland.tiles[itemm][0], chosenIsland.tiles[itemm][1]+1]) && directions[z]=="right") || (inArray(currentState.impossibleMoves, [chosenIsland.tiles[itemm][0]+1, chosenIsland.tiles[itemm][1]]) && directions[z]=="down") || (inArray(currentState.impossibleMoves, [chosenIsland.tiles[itemm][0], chosenIsland.tiles[itemm][1]-1]) && directions[z]=="left")){//console.log("pass");
+							} else {
+								if (directions[z]=="up") {
+									potentialNewTiles.push([chosenIsland.tiles[itemm][0]-1, chosenIsland.tiles[itemm][1]]);	
+								} else if (directions[z]=="right") {
+									potentialNewTiles.push([chosenIsland.tiles[itemm][0], chosenIsland.tiles[itemm][1]+1]);	
+								} else if (directions[z]=="down") {
+									potentialNewTiles.push([chosenIsland.tiles[itemm][0]+1, chosenIsland.tiles[itemm][1]]);	
+								} else if (directions[z]=="left") {
+									potentialNewTiles.push([chosenIsland.tiles[itemm][0], chosenIsland.tiles[itemm][1]-1]);	
+								}
+								
+							}
+							setNeighbour(chosenIsland.tiles[itemm][0], chosenIsland.tiles[itemm][1], table, directions[z], 0);
+						}
+					}
+				}
+				if (potentialNewTiles.length > 0){
+					return potentialNewTiles;
+				} else {
+					return null;
+				}
+			}
+			function updateIslands(consideredIslands, table) {
+				for(island in consideredIslands){
+					var tiles = returnTiles(consideredIslands[island].x, consideredIslands[island].y, table);
+					if (tiles.length < table[consideredIslands[island].x][consideredIslands[island].y]) {
+						 	consideredIslands[island].complete = false;
+						 	consideredIslands[island].tiles = deepcopy(tiles);
+					} else if (tiles.length == table[consideredIslands[island].x][consideredIslands[island].y]) {
+						consideredIslands[island].complete = true;
+					} else {
+						console.log("Island too big, errored somewhere!");
+					}
+				}
+				return consideredIslands;
+			}
+			function chooseIsland(consideredIslands, chooseIsland) {
+				chosenIsland = null;
+				for(island in consideredIslands) {
+					if (!consideredIslands[island].complete) {
+						chosenIsland = consideredIslands[island];
+						break;
+					}
+				}
+				return chosenIsland;
+			}
+			function doChecks(table) {
+				var flag = true;
+				if (wallBlockCheck(table) == null) {
+					var undefinedInTable = false;
+					for(line in table){
+						for(cell in table[line]){
+							if (table[line][cell] == 0) {
+								undefinedInTable = true;
+							}
+						}
+					}
+					if (!undefinedInTable) {
+						if (allIslCheck(table)) {
+							if (checkWallIntegrity3(table)) {//console.log("pass");
+							} else {
+								flag = false;
+							}
+						} else {
+							flag = false;
+						}
+					} else {
+						flag = false;
+					}
+				} else {
+					flag = false;
+				}
+				return flag;
+			}
+			function wallAndDoChecks(table) {
+				var tableCopy = deepcopy(table);
+		    	wall(tableCopy);
+		    	if (doChecks(tableCopy)) {
+		    		wall(table); //alert("Nurikabe complete");
+		    		console.log("Solved Nurikabe grid:");
+		    		printTableOld(table);
+		    		drawCells(table);
+					drawGrid();
+		    		return true;
+		    	} else {
+		    		return false;
+		    	}
+			}
+
+			var steps = false;
+			document.getElementById("pause").style.display = "none";
+			document.getElementById("step").style.display = "none";
+			document.getElementById("speed").style.display = "none";
+
+			function main_loop(table, currentState, depth, stateHistory, originalTable, returningFromBadState, lastTouchedIsland, chosenIsland, consideredIslands, solved){
+				drawCells(table);
+				drawGrid();
+				logicalMoves(table);
+			    	if(wallAndDoChecks(table)){
+			    		return [table, currentState, depth, stateHistory, originalTable, returningFromBadState, lastTouchedIsland, chosenIsland, consideredIslands, true];
+			    	}
+			    	if (!returningFromBadState) {
+			    		console.log("Not returning from bad state, table:");
+			    		printTableOld(table);
+			    		console.log("impossible moves: "+ currentState.impossibleMoves);
+			    		updateIslands(consideredIslands, table);
+			    		var chosenIsland = chooseIsland(consideredIslands, chosenIsland);
+			    		if (chosenIsland == null) {
+			    			var tableCopy = deepcopy(table);
+			    			wall(tableCopy);
+			    			if (doChecks(tableCopy)) {
+					    		wall(table); //alert("Nurikabe complete");
+					    		printTableOld(table);
+					    		drawCells(table);
+					    		drawGrid();
+					    		solved = true;
+					    		return [table, currentState, depth, stateHistory, originalTable, returningFromBadState, lastTouchedIsland, chosenIsland, consideredIslands, solved];
+			    			} else {
+			    				console.log("All islands complete but Nurikabe not solved");
+			    				returningFromBadState = true;
+			    			}
+			    		} else {
+			    			console.log("Searching tiles for "+chosenIsland.x+ " "+chosenIsland.y);
+			    			var potentialTiles = returnPotentialTiles(table, chosenIsland, currentState);
+			    			if (potentialTiles == null) {
+			    				var tableCopy = deepcopy(table);
+			    				wall(tableCopy);
+				    			if (doChecks(tableCopy)) {
+						    		wall(table); //alert("Nurikabe complete");
+						    		printTableOld(table);
+						    		drawCells(table);
+					    			drawGrid();
+					    			solved = true;
+						    		return [table, currentState, depth, stateHistory, originalTable, returningFromBadState, lastTouchedIsland, chosenIsland, consideredIslands, solved];
+				    			} else {
+				    				console.log("No potential tiles for island, must go back");
+				    				returningFromBadState = true;
+				    			}
+			    			} else {
+			    				currentState.lastMove = [potentialTiles[0][0], potentialTiles[0][1]];
+			    				currentState.lastIsland = deepcopy(chosenIsland);
+			    				if (stateHistory.length == 0) {
+			    					stateHistory.push(deepcopy(currentState));
+			    					console.log("appended to stateHistory before supposition1");
+			    				} else if (stateHistory.length > 0 && !compareArray(table, stateHistory[stateHistory.length-1].table)) {
+			    					stateHistory.push(deepcopy(currentState));
+			    					console.log("appended to stateHistory before supposition1");
+			    				}
+			    				stateHistory[stateHistory.length-1].lastMove = [potentialTiles[0][0], potentialTiles[0][1]];
+			    				currentState.lastIsland = deepcopy(chosenIsland);
+			    				lastMove = [potentialTiles[0][0], potentialTiles[0][1]];
+			    				table[potentialTiles[0][0]][potentialTiles[0][1]] = -2;
+			    				console.log("appended "+ potentialTiles[0][0]+ " "+potentialTiles[0][1], " to "+ chosenIsland.x+ " "+chosenIsland.y+
+			                          " table looks like this:---------------");
+			    				printTableOld(table);
+			    			}
+			    		}
+			    } else { //Returning from a bad state
+			    	console.log("coming back from a bad state");
+			    	if (returnPotentialTiles(stateHistory[stateHistory.length-1].table, stateHistory[stateHistory.length-1].lastIsland, stateHistory[stateHistory.length-1]) == null) {
+			    		stateHistory.pop();
+			    	}
+			    	stateHistory[stateHistory.length-1].impossibleMoves.push(stateHistory[stateHistory.length-1].lastMove);
+			    	currentState = deepcopy(stateHistory[stateHistory.length-1]);
+			    	table = currentState.table;
+			    	returningFromBadState = false;
+			    }
+			    depth++;
+			    console.log("going in depth "+depth);
+			    return [table, currentState, depth, stateHistory, originalTable, returningFromBadState, lastTouchedIsland, chosenIsland, consideredIslands, false];
+			}
+
+			var res;
+			var solved;
+			var timer;
+			var originalSpeed = 1500;
+			var speed = originalSpeed;
+			function solve(table, currentState) {
+				var depth = 0;
+				var stateHistory = [];
+				elimAdj(table);
+				diagonal(table);
+				var originalTable = deepcopy(table);
+				var returningFromBadState = false;
+				var lastMove = null;
+				var islandHistory = [];
+				var returningFromSameIsland = false;
+			    var lastTouchedIsland = null;
+			    var chosenIsland = null;
+			    var consideredIslands = [];
+			    for (var i = 0; i < table.length; i++) {
+			    	for (var j = 0; j < table[0].length; j++) {
+			    		if (table[i][j] > 0) {
+			    			if (!islandCheckNotTooBig(i, j, table, table[i][j])) {
+			    				consideredIslands.push(new Island(i, j, table[i][j]));
+			    			}
+			    		}
+			    	}
+			    }
+			    if (consideredIslands.length > 0) {
+			    	wallAndDoChecks(table);
+			    }
+			    //main loop
+			    var res = [table, currentState, depth, stateHistory, originalTable, returningFromBadState, lastTouchedIsland, chosenIsland, consideredIslands, false];
+			    var solved = false;
+
+			    function loop() {
+			    			if (steps && !paused) {
+			    				document.getElementById("speed").innerHTML = 'Milliseconds between each step:  <input id="interval" style="" type="range" min="1" max="2500" value="'+document.getElementById('interval').value+'"/>'+document.getElementById('interval').value;
+			    				speed = parseInt(document.getElementById('interval').value);
+			    				originalSpeed = parseInt(document.getElementById('interval').value);
+			    				timer = parseInt(document.getElementById('interval').value);
+			    			}
+			    			if (nextStep) {
+			    				speed = 0.1;
+			    				timer = 0.1;
+			    			}
+			    			var cachedGrid2;
+			    			if(!paused || nextStep){
+			    				cachedGrid2 = deepcopy(res[0]);
+			    			if (!solved) {
+			    				res = main_loop(res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7], res[8], res[9]);
+			    				solved = res[9];
+			    				if (!compareArray(cachedGrid2, res[0])) {
+			    					nextStep = false;
+			    				}
+			    			} else {
+			    				clearInterval(timer);
+			    				isSolving = false;
+			    				nextStep = false;
+			    				document.getElementById("pause").style.display = "none";
+			    				document.getElementById("step").style.display = "none";
+			    				document.getElementById("stepDisabled").style.display = "inline";
+								document.getElementById("pauseDisabled").style.display = "inline";
+			    				if (!paused) {
+			    					speed = originalSpeed;
+			    				}
+			    			}
+			    		}
+			    	timer = window.setTimeout(loop, speed);
+			    }
+			    function loopNoSteps() {
+			    	while (!solved) {
+			    		res = main_loop(res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7], res[8], res[9]);
+			    		solved = res[9];
+			    	}
+			    }
+			    if (steps) {
+			    	isSolving = true;
+			    	loop();
+			    } else {
+			    	loopNoSteps();
+			    }
+			}
+			var justAfterSolving = false;
+			var isSolving = false;
+			function solveWrapper(grid) {
+				if (!isSolving && !justAfterSolving) {
+					if (steps) {
+						document.getElementById("pause").style.display = "inline";
+						document.getElementById("pauseDisabled").style.display = "none";
+					}
+					cachedGrid=deepcopy(grid);
+					justAfterSolving = true;
+					isSolving = true;
+					if (!steps) {
+						document.getElementById('waiting').innerHTML = 'Please wait, Nurikabe is being solved... Page may freeze if the Nurikabe is complex.';
+						document.getElementById("reset").style.display = "none";
+						document.getElementById("resetDisabled").style.display = "inline";
+					} 
+					var currentState = new State(grid);
+					freshlySet = false;
+					setTimeout(function() {
+		      			solve(grid, currentState);
+		    		}, 10);
+					setTimeout(function() {
+		      		document.getElementById('waiting').innerHTML = '';
+		      		document.getElementById("reset").style.display = "inline";
+		      		document.getElementById("resetDisabled").style.display = "none";
+		    		}, 100);
+				}
+			}
+			var freshlySet = true;
+			function reset(table) {
+				if (!freshlySet) {
+					speed = originalSpeed;
+					justAfterSolving = false;
+					grid=deepcopy(cachedGrid);
+					clearInterval(timer);
+					var pauseButton = document.getElementById("pause").innerHTML = "Pause";
+					paused = false;
+					isSolving = false;
+					ctx.fillStyle = "#ffffff";
+					ctx.fillRect(0, 0, newXSize, newYSize);
+					drawCells(table);
+					drawGrid();
+					if (steps) {
+						document.getElementById("step").style.display = "none";
+						document.getElementById("pause").style.display = "none";
+						document.getElementById("stepDisabled").style.display = "inline";
+						document.getElementById("pauseDisabled").style.display = "inline";
+					}
+				}
+			}
+			var paused = false;
+			function pause() {
+				if (isSolving) {
+					if (paused) {
+					paused = false;
+					speed = originalSpeed;
+					var pauseButton = document.getElementById("pause").innerHTML = "Pause";
+					document.getElementById("step").style.display = "none";
+					document.getElementById("stepDisabled").style.display = "inline";
+				} else {
+					paused = true;
+					speed = 0.1;
+					var pauseButton = document.getElementById("pause").innerHTML = "Resume";
+					document.getElementById("step").style.display = "inline";
+					document.getElementById("stepDisabled").style.display = "none";
+				}
+				}
+			}
+			var nextStep = false;
+			function step() {
+				if (paused) {
+					speed = 0.1;
+			    	nextStep = true;
+			    }
+			}
+			//Big thanks to Oka, stackoverflow.com/questions/30725455/change-setinterval-value-dynamically
+			//Before, the main loop was called from a setInterval and not from a setTimeout
+			function changeStepMode() {
+				if (!freshlySet) {
+					reset(cachedGrid);
+				}
+				document.getElementById("step").style.display = "none";
+				document.getElementById("pause").style.display = "none";
+				if (steps) {
+					steps = false;
+					document.getElementById("speed").style.display = "none";
+					document.getElementById("stepDisabled").style.display = "none";
+				document.getElementById("pauseDisabled").style.display = "none";
+				} else {
+					steps = true;
+					document.getElementById("speed").style.display = "inline";
+					document.getElementById("stepDisabled").style.display = "inline";
+					document.getElementById("pauseDisabled").style.display = "inline";
+				}
+			}
+
+			var database = {
+				"5x5":[
+						[[0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 1, 0],
+				  		 [0, 0, 3, 0, 0],
+				  		 [1, 0, 0, 0, 0],
+				  		 [0, 0, 4, 0, 0]],
+
+				  		[[1, 0, 1, 0, 5],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 0],
+				  		 [3, 0, 1, 0, 1]],
+
+				  		[[0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 2, 0, 2, 0],
+				  		 [0, 0, 0, 0, 4],
+				  		 [2, 0, 0, 0, 0]],
+
+				  		[[0, 0, 0, 0, 0],
+				  		 [4, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 3],
+				  		 [2, 0, 0, 0, 0]],
+
+				  		[[2, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 2],
+				  		 [0, 3, 0, 0, 0],
+				  		 [0, 0, 0, 0, 1],
+				  		 [0, 0, 0, 0, 0]],
+
+				  		[[5, 0, 5, 0, 0],
+				  		 [0, 0, 0, 0, 2],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 0]],
+
+				  		[[0, 0, 0, 0, 3],
+				  		 [0, 3, 0, 0, 0],
+				  		 [0, 0, 0, 0, 3],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 0]],
+
+				  		[[0, 1, 0, 1, 0],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 5, 0, 0],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 0]],
+
+				  		[[0, 0, 0, 0, 6],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 1, 0, 4],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 2, 0, 0, 0]],
+
+				  		[[0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 1],
+				  		 [0, 3, 0, 1, 0],
+				  		 [0, 0, 0, 0, 0],
+				  		 [0, 0, 0, 0, 5]]
+				],
+				"7x7":[
+						[[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 8, 0, 0, 0, 0, 0],
+						[5, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 2, 0],
+						[0, 0, 0, 3, 0, 0, 0],
+						[0, 0, 1, 0, 0, 0, 1]],
+						[[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 3],
+						[0, 0, 0, 0, 0, 5, 0],
+						[0, 0, 0, 7, 0, 0, 0],
+						[0, 2, 0, 0, 0, 0, 0],
+						[4, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0]],
+						[[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 7, 0, 0, 0, 0, 2],
+						[0, 0, 0, 5, 0, 0, 0],
+						[0, 0, 0, 0, 0, 2, 0],
+						[0, 0, 0, 0, 0, 0, 1]],
+						[[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 7, 0],
+						[0, 0, 0, 0, 0, 0, 5],
+						[2, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[1, 0, 0, 2, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0]],
+						[[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 4, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 3],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 8, 0, 2],
+						[0, 0, 0, 4, 0, 0, 0]],
+						[[0, 4, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[7, 0, 0, 0, 0, 2, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[2, 0, 0, 0, 0, 2, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 4, 0, 0, 0, 0, 0]],
+						[[0, 7, 0, 0, 2, 0, 0],
+						[0, 0, 0, 0, 0, 1, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 7, 0],
+						[0, 2, 0, 0, 3, 0, 0]],
+						[[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 2, 0, 0],
+						[0, 0, 0, 0, 0, 3, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 4, 0],
+						[0, 1, 0, 0, 9, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0]],
+						[[7, 0, 3, 0, 0, 0, 1],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 5],
+						[0, 0, 0, 0, 0, 0, 0],
+						[1, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[1, 0, 0, 0, 3, 0, 3]],
+						[[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 1, 0],
+						[0, 0, 5, 0, 8, 0, 4],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 0, 0, 0],
+						[0, 0, 0, 0, 1, 0, 0]]
+				],
+				"10x10":[
+						[[0, 0, 0, 9, 0, 0,13, 0, 0, 0],
+						[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						[ 0, 0, 0, 3, 0, 0, 1, 0, 0, 0],
+						[ 0, 0, 9, 0, 0, 0, 0, 2, 0, 0],
+						[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						[ 0, 0, 4, 0, 0, 0, 0, 0, 0, 0],
+						[ 0, 0, 0, 2, 0, 0, 3, 0, 0, 0],
+						[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						[ 0, 0, 0, 1, 0, 0, 3, 0, 0, 0]],
+						[[0, 0, 0, 1, 0, 0, 3, 0, 0, 0],
+						[ 0, 0, 4, 0, 0, 0, 0, 3, 0, 0],
+						[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						[ 8, 0, 0, 0, 0, 0, 0, 0, 0, 3],
+						[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						[ 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+						[11, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+						[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						[ 0, 0, 1, 0, 0, 0, 0, 3, 0, 0],
+						[ 0, 0, 0, 2, 0, 0, 1, 0, 0, 0]],
+						[[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						[ 0, 0, 0, 0, 0, 3, 0, 3, 0, 0],
+						[ 0, 2, 0, 0, 0, 0, 3, 0, 0, 0],
+						[ 0, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+						[ 0, 3, 0, 0, 0, 0, 0, 0, 0, 0],
+						[ 0, 0, 0, 0, 0, 0, 0, 0, 2, 0],
+						[ 0, 0, 0, 0, 0, 0, 0, 2, 0, 0],
+						[ 0, 0, 0, 5, 0, 0, 0, 0, 1, 0],
+						[ 0, 0, 2, 0, 4, 0, 0, 0, 0, 0],
+						[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]]
+				]
+			};
+
+			var cachedGrid = [];
+			var currentSize = "7x7";
+			var currentSelection = 3;
+			var grid = deepcopy(database[currentSize][currentSelection]);
+			var currentState = new State(grid);
+			var table = currentState.table;
+
+			//Canvas stuff:
+			var canvas=document.getElementById("canvas");
+			var ctx=canvas.getContext("2d");
+			var x_len = grid.length;
+			var y_len = grid[0].length;
+			var maxSize = 300;
+			var newXSize = 0;
+			var newYSize = 0;
+			var cellSize = 0;
+			function resizeCanvas(grid) {
+				x_len = grid.length;
+				y_len = grid[0].length;
+				maxSize = 300;
+				newXSize = 0;
+				newYSize = 0;
+				cellSize = 0;
+				if (x_len > y_len) {
+					cellSize = maxSize/x_len;
+					ctx.canvas.height = maxSize;
+					ctx.canvas.width = cellSize*y_len;
+					newXSize = cellSize*y_len;
+				} else if (x_len < y_len) {
+					cellSize = maxSize/y_len;
+					ctx.canvas.width = maxSize;
+					ctx.canvas.height = cellSize*x_len;
+					newYSize = cellSize*x_len;
+				} else {
+					cellSize = maxSize/x_len;
+					ctx.canvas.height = maxSize;
+					ctx.canvas.width = maxSize;
+					newYSize = maxSize;
+					newXSize = maxSize;
+				}
+			}
+			resizeCanvas(grid);
+			ctx.fillStyle = "#ffffff";
+			ctx.fillRect(0, 0, newXSize, newYSize);
+			function drawGrid() {
+				for (var i = 0; i < newXSize; i+=cellSize) {
+					ctx.strokeStyle = "#021724";
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.moveTo(i, 0);
+					ctx.lineTo(i, newYSize);
+					ctx.stroke();
+				}
+			for (var i = 0; i < newYSize; i+=cellSize) {
+					ctx.strokeStyle = "#021724";
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.moveTo(0, i);
+					ctx.lineTo(newXSize, i);
+					ctx.stroke();
+				}
+			}
+			function drawCells(table) {
+				for (var i = 0; i < x_len; i++) {
+					for (var j = 0; j < y_len; j++) {
+						if (table[i][j] > 0) {
+							ctx.fillStyle = "#ffffff";
+							ctx.fillRect(j*cellSize, i*cellSize, cellSize, cellSize);
+							ctx.fillStyle = "#021724";
+							var fontSize = cellSize*0.75;
+							ctx.font = fontSize + "px Arial";
+							height = parseInt(ctx.font.match(/\d+/), 10);
+							ctx.fillText(table[i][j], j*cellSize+(cellSize-ctx.measureText(table[i][j]).width)/2, i*cellSize+cellSize-((cellSize-height)/2));
+						}
+						if (table[i][j] == 0) {
+							ctx.fillStyle = "#ffffff";
+							ctx.fillRect(j*cellSize, i*cellSize, cellSize, cellSize);
+						}
+						if (table[i][j] == -1) {
+							ctx.fillStyle = "#021724";
+							ctx.fillRect(j*cellSize, i*cellSize, cellSize, cellSize);
+						}
+						if (table[i][j] == -2) {
+							ctx.fillStyle = "#021724";
+							ctx.fillRect(j*cellSize+cellSize/2-(cellSize/5)/2, i*cellSize+cellSize/2-(cellSize/5)/2, cellSize/5, cellSize/5);
+						}
+					}
+				}
+			}
+			function change(size) {
+				if (size == 0) {
+					document.getElementById("1").value="7×7 grids";
+					document.getElementById("2").value="10×10 grids";
+					currentSize = "5×5";
+				} else if (size == 1) {
+					document.getElementById("0").value="5×5 grids";
+					document.getElementById("2").value="10×10 grids";
+					currentSize = "7×7";
+				} else if (size == 2) {
+					document.getElementById("0").value="5×5 grids";
+					document.getElementById("1").value="7×7 grids";
+					currentSize = "10×10";
+				}
+				if (steps) {
+					document.getElementById("pause").style.display = "none";
+				}
+				freshlySet = true;
+				clearInterval(timer);
+				speed = originalSpeed;
+				justAfterSolving=false;
+				isSolving = false;
+				nextStep = false;
+				paused = false;
+				var pauseButton = document.getElementById("pause").innerHTML = "Pause";
+				var grid = deepcopy(database[Object.keys(database)[size]][document.getElementById(size).value-1]);
+				currentSelection = document.getElementById(size).value-1;
+				resizeCanvas(grid);
+				drawCells(grid);
+				drawGrid();
+				return grid;
+			}
+			drawCells(grid);
+			drawGrid();
+		</script>
+	
+	
+</body></html>

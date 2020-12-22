@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>contact:jackowski626</title>
+	<title>projects:jackowski626</title>
 	<link rel="icon" href="../../ressources/images/favicon.png">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -9,15 +9,15 @@
 	<link rel="stylesheet" href="../../ressources/css/font-awesome.min.css">
 </head>
 <body>
-	<div id="articleName">contact</div>
+	<div id="articleName">projects</div>
 	<div id="wrapper">
 		<!--Navbar from w3schools-->
 		<div class="topnav" id="myTopnav">
 		  <a href="../../index.html" id="home">home</a>
 		  <!--<a href="./src/html/cv.html" id="cv">cv</a>-->
-		  <a href="../../src/html/projects.html">projects</a>
+		  <a href="#" class="active" id="projects">projects</a>
 		  <a href="../../src/html/misc.html">misc</a>
-		  <a href="#" class="active" id="contact">contact</a>
+		  <a href="../../src/html/contact.html" id="contact">contact</a>
 		  <a href="javascript:void(0);" id="icon" class="icon" onclick="showDropdown()">
 		    <i class="fa fa-bars"></i>
 		  </a>
@@ -27,14 +27,16 @@
 		</div>
 		
 		<div class="article">
-			<h2>Contact</h2>
-			<p>Mail: <a href="#" onclick="copyEmail()" id="mail" class="has-tooltip">jackowski626@outlook.com<span class="tooltip tooltip-top" id="mailTooltip">copied to clipboard</span></a></p>
-			<p>Discord: <a href="#" onclick="copyDiscord()" id="mail" class="has-tooltip">jackowski626#0522<span class="tooltip tooltip-top" id="discordTooltip">copied to clipboard</span></a></p>
+			<h2>Projects</h2>
+			<ul>
+				<li>Highschool graduation project: Nurikabe solver. Initially written in Python and rewritten in Javascript.<br>Available <a href="../../src/html/nurikabe_solver.html" target="blank">here</a>.</li>
+				<li>A web solver for a minigame from the Minecraft game modification Thaumcraft 4.<br>Available <a href="../../src/html/tc_solver.html" target="blank">here</a>.</li>
+				<li><a href="https://github.com/jackowski626" target="blank">My GitHub profile</a>.</li>
+			</ul>
 		</div>
 	</div>
 </body>
 
-<script src="../../src/js/contact.js"></script>
 <script src="../../src/js/universalArticle.js"></script>
 
 </html>

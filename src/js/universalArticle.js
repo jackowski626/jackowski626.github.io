@@ -1,7 +1,6 @@
 var mediaQuery = window.matchMedia("(max-width: 600px)");
 
 categoryName = document.getElementById('articleName').innerText;
-console.log(categoryName);
 
 function showDropdown() {
     var topnav = document.getElementById("myTopnav");

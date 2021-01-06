@@ -6,6 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<link rel="stylesheet" type="text/css" href="./ressources/css/mainStylesheet.css"/>
+	<link rel="stylesheet" type="text/css" href="./ressources/css/index.css"/>
 	<link rel="stylesheet" href="./ressources/css/font-awesome.min.css">
 </head>
 <body>
@@ -20,14 +21,58 @@
 		  <a href="javascript:void(0);" id="icon" class="icon" onclick="showDropdown()">
 		    <i class="fa fa-bars"></i>
 		  </a>
-		  <img id="pdpimage" src="https://avatars0.githubusercontent.com/u/22838328">
+		  <img id="pdpimage" src="./ressources/images/pfp.jpg">
 		  <a id="siteName">jackowski626 - personal page</a>
 		  <a id="siteNameShort">jackowski626</a>
 		</div>
 		
 		<div class="article">
 			<h2>Welcome to my page!</h2>
-			<p>Here you can find some random stuff I did, or deemed interesting enough to be linked. This site is still under construction.</p>	
+
+			<div class="text_image_wrapper" id="site_description">
+				<div class="text">
+					<p>On this page, you can find some random stuff I did, or deemed interesting enough to be linked. This site is still under construction. I'm probably gonna move most stuff here to <a href="./src/html/misc.html">misc</a> or something. Happy browsing! <img src="./ressources/images/emojis/hap.png" class="emoji" width="18" height="18" alt=":hap:" title=":hap:"></p>
+				</div>
+				<div class="image_flavor_wrapper">
+					<!--I stole this gif from some discord lul-->
+					<img src="./ressources/images/index/brazil_portal.gif" alt="Brazil portal" title="Brazil portal" onClick="parent.open('https://www.youtube.com/watch?v=vHQt41bjJ1U')">
+					<div class="flavor">«You're going to Brazil»</div>
+				</div>
+			</div>
+
+			<div class="text_image_wrapper">
+				<div class="text">
+					<h3>Boys Gregified, my «Gregtech: New Horizons» server</h3>
+					<p>Modded Minecraft server with a small community. Whitelist on Discord. GT:NH info in <a href="./src/html/misc.html">misc</a>.</p>
+				</div>
+				<div id="discord_wrapper">
+					<div id="discord_background">
+						<div id="discord_title">Boys Gregified Discord:</div>
+						<div id="icon_join_wrapper">
+							<img src="./ressources/images/index/discord_icon.png" id="discord_icon" title="Boys Gregified Discord server icon" alt="Boys Gregified Discord server icon">
+							<a href="https://discord.gg/bxanUemXCr" target="blank"><div id="discord_join">Join</div></a>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="text_image_wrapper">
+				<div class="text">
+					<h3>Luke Smith</h3>
+					<p>Based and Linux-pilled. Contains various useful stuff like some <a href="https://lukesmith.xyz/articles/poetic.html" target="blank" title="Hedonism, Asceticism and the Hermetic Answer">bigbrain reflexions</a>, a <a href="https://larbs.xyz/" target="blank" title="LARBS">Linux distro</a>, a <a href="https://searx.lukesmith.xyz/" target="blank" title="Luke's searx">SearX instance</a>, and many more.</p>
+					<ul>
+						<li><a href="https://lukesmith.xyz/" target="blank">Website</a><img src="./ressources/images/emojis/luke.png" class="emoji" width="18" height="18" alt=":luke:" title=":luke:"></li>
+						<li><a href="https://git.lukesmith.xyz/" target="blank">Git server</a> / <a href="https://github.com/LukeSmithxyz" target="blank">Github</a><img src="./ressources/images/emojis/github.png" class="emoji" width="18" height="18" alt=":github:" title=":github:"></li>
+						<li><a href="https://www.youtube.com/c/lukesmithxyz" target="blank">YouTube</a> / <a href="https://videos.lukesmith.xyz/" target="blank">PeerTube</a><img src="./ressources/images/emojis/yt.png" class="emoji" width="18" height="18" alt=":yt:" title=":yt:"></li>
+					</ul>
+				</div>
+				<div class="image_flavor_wrapper">
+					<!--I stole this gif from some discord lul-->
+					<img src="./ressources/images/index/boomer.png" width="100" alt="boomer" title="boomer" onClick="parent.open('https://videos.lukesmith.xyz/videos/watch/d1bfb082-b203-43dc-9676-63d28fe65db5')">
+					<div class="flavor">«That's my lesson about egos: don't have one. Of course if you disagree with me you're wrong and you should feel bad and embarassed»</div>
+				</div>
+			</div>
+
 		</div>
 	</div>
 </body>

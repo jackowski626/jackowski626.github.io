@@ -405,3 +405,15 @@ li {
 .push {
   height: 80px;
 }
+
+@media only screen and (max-width: 510px) {
+  #chan {
+    display: none;
+  }
+}
+
+@media only screen and (max-width: 330px) {
+  #evil {
+    display: none;
+  }
+}

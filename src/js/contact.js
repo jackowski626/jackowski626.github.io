@@ -27,37 +27,17 @@ function fallbackCopyTextToClipboard(text) {
 
   document.body.removeChild(textArea);
 }
-function copyEmail(text) {
-	var text = "jackowski626@outlook.com";
+function copyText(text, soc) {
   if (!navigator.clipboard) {
     fallbackCopyTextToClipboard(text);
     return;
   }
   navigator.clipboard.writeText(text).then(function() {
     //console.log('Async: Copying to clipboard was successful!');
-    var tooltip = document.getElementById("mailTooltip");
+    var tooltip = document.getElementById(soc + "Tooltip");
     tooltip.style.visibility = "visible";
     tooltip.style.opacity = 1;
-    setTimeout(function(){ var tooltip = document.getElementById("mailTooltip");
-    tooltip.style.visibility = "hidden";
-    tooltip.style.opacity = 0; }, 2000);
-  }, function(err) {
-    //console.error('Async: Could not copy text: ', err);
-  });
-}
-
-function copyDiscord(text) {
-  var text = "jackowski626#0522";
-  if (!navigator.clipboard) {
-    fallbackCopyTextToClipboard(text);
-    return;
-  }
-  navigator.clipboard.writeText(text).then(function() {
-    //console.log('Async: Copying to clipboard was successful!');
-    var tooltip = document.getElementById("discordTooltip");
-    tooltip.style.visibility = "visible";
-    tooltip.style.opacity = 1;
-    setTimeout(function(){ var tooltip = document.getElementById("discordTooltip");
+    setTimeout(function(){ var tooltip = document.getElementById(soc + "Tooltip");
     tooltip.style.visibility = "hidden";
     tooltip.style.opacity = 0; }, 2000);
   }, function(err) {

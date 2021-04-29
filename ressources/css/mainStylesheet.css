@@ -5,6 +5,13 @@ body{
   background-color: #1C1D1F;
   overflow-x:hidden;
 }
+
+/* footer related */
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
 #wrapper {
   overflow-x:hidden;
   max-width: 100%;
@@ -21,6 +28,13 @@ body{
   -moz-hyphens: auto;
   -webkit-hyphens: auto;
   hyphens: auto;
+
+  /*footer related (https://css-tricks.com/couple-takes-sticky-footer/)*/
+  min-height: 100%;
+
+  /* Equal to height of footer */
+  /* But also accounting for potential margin-bottom of last child */
+  margin-bottom: -80px;
 }
 a {
   color: #43A3DB;
@@ -318,6 +332,7 @@ li {
   font-style: oblique;
   margin-top: 5px;
   max-width: 250px;
+  text-align: center;
 }
 
 .text_image_wrapper {
@@ -363,4 +378,30 @@ li {
 
 .emoji {
   margin-left: 5px;
+}
+
+/* https://www.w3schools.com/howto/howto_css_fixed_footer.asp*/
+/*.footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background-color: #2A2C2E;
+  color: white;
+  text-align: center;
+}*/
+
+.footer {
+  text-align: center;
+  background-color: #2A2C2E;
+}
+
+.footer img {
+  margin: 10px;
+  /*margin-top: 10px*/
+}
+
+.footer,
+.push {
+  height: 80px;
 }

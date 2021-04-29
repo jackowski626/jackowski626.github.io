@@ -392,7 +392,7 @@ li {
 }*/
 
 .footer {
-  margin-top: 30px;
+  /* padding-top: 30px; */
   text-align: center;
   background-color: #2A2C2E;
 }
@@ -402,9 +402,12 @@ li {
   /*margin-top: 10px*/
 }
 
-.footer,
-.push {
+.footer {
   height: 80px;
+}
+
+.push {
+  height: 110px;
 }
 
 @media only screen and (max-width: 510px) {
